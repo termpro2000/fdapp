@@ -104,6 +104,16 @@ export const shippingAPI = {
   updateOrderStatus: async (id: number, status: string) => {
     const response = await apiClient.patch(`/shipping/orders/${id}/status`, { status });
     return response.data;
+  },
+
+  // 관리자용 운송장 번호 할당
+  assignTrackingNumber: async (id: number, trackingData: {
+    tracking_number: string;
+    tracking_company?: string;
+    estimated_delivery?: string;
+  }) => {
+    const response = await apiClient.post(`/shipping/orders/${id}/tracking`, trackingData);
+    return response.data;
   }
 };
 

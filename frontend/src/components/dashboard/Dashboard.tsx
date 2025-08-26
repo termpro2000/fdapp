@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Package, TrendingUp, Clock, CheckCircle, AlertCircle, Eye, Search, Filter, RefreshCw, Pause, Play } from 'lucide-react';
+import { Package, TrendingUp, Clock, CheckCircle, AlertCircle, Eye, Search, Filter, RefreshCw, Pause, Play, Truck } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { api, shippingAPI } from '../../services/api';
 import type { ShippingOrder } from '../../types';
@@ -7,10 +7,12 @@ import OrderDetailModal from './OrderDetailModal';
 
 interface DashboardStats {
   total: number;
-  pending: number;
-  processing: number;
-  completed: number;
-  cancelled: number;
+  접수완료: number;
+  배송준비: number;
+  배송중: number;
+  배송완료: number;
+  취소: number;
+  반송: number;
 }
 
 const Dashboard: React.FC = () => {
@@ -18,10 +20,12 @@ const Dashboard: React.FC = () => {
   const [orders, setOrders] = useState<ShippingOrder[]>([]);
   const [stats, setStats] = useState<DashboardStats>({
     total: 0,
-    pending: 0,
-    processing: 0,
-    completed: 0,
-    cancelled: 0
+    접수완료: 0,
+    배송준비: 0,
+    배송중: 0,
+    배송완료: 0,
+    취소: 0,
+    반송: 0
   });
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -95,10 +99,12 @@ const Dashboard: React.FC = () => {
       // 통계 계산
       const newStats = {
         total: ordersData.length,
-        pending: ordersData.filter((o: ShippingOrder) => o.status === 'pending').length,
-        processing: ordersData.filter((o: ShippingOrder) => o.status === 'processing').length,
-        completed: ordersData.filter((o: ShippingOrder) => o.status === 'completed').length,
-        cancelled: ordersData.filter((o: ShippingOrder) => o.status === 'cancelled').length
+        접수완료: ordersData.filter((o: ShippingOrder) => o.status === '접수완료').length,
+        배송준비: ordersData.filter((o: ShippingOrder) => o.status === '배송준비').length,
+        배송중: ordersData.filter((o: ShippingOrder) => o.status === '배송중').length,
+        배송완료: ordersData.filter((o: ShippingOrder) => o.status === '배송완료').length,
+        취소: ordersData.filter((o: ShippingOrder) => o.status === '취소').length,
+        반송: ordersData.filter((o: ShippingOrder) => o.status === '반송').length
       };
       setStats(newStats);
     } catch (error: any) {
@@ -111,13 +117,15 @@ const Dashboard: React.FC = () => {
 
   const getStatusBadge = (status: string) => {
     const statusConfig = {
-      pending: { color: 'bg-yellow-100 text-yellow-800', text: '접수대기', icon: Clock },
-      processing: { color: 'bg-blue-100 text-blue-800', text: '처리중', icon: TrendingUp },
-      completed: { color: 'bg-green-100 text-green-800', text: '완료', icon: CheckCircle },
-      cancelled: { color: 'bg-red-100 text-red-800', text: '취소', icon: AlertCircle }
+      '접수완료': { color: 'bg-yellow-100 text-yellow-800', text: '접수완료', icon: Clock },
+      '배송준비': { color: 'bg-blue-100 text-blue-800', text: '배송준비', icon: TrendingUp },
+      '배송중': { color: 'bg-orange-100 text-orange-800', text: '배송중', icon: Truck },
+      '배송완료': { color: 'bg-green-100 text-green-800', text: '배송완료', icon: CheckCircle },
+      '취소': { color: 'bg-red-100 text-red-800', text: '취소', icon: AlertCircle },
+      '반송': { color: 'bg-red-100 text-red-800', text: '반송', icon: AlertCircle }
     };
     
-    const config = statusConfig[status as keyof typeof statusConfig] || statusConfig.pending;
+    const config = statusConfig[status as keyof typeof statusConfig] || statusConfig['접수완료'];
     const Icon = config.icon;
     
     return (
@@ -251,8 +259,8 @@ const Dashboard: React.FC = () => {
         <div className="bg-white rounded-lg shadow p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-600">접수대기</p>
-              <p className="text-3xl font-bold text-yellow-600">{stats.pending}</p>
+              <p className="text-sm text-gray-600">접수완료</p>
+              <p className="text-3xl font-bold text-yellow-600">{stats.접수완료}</p>
             </div>
             <Clock className="w-12 h-12 text-yellow-500" />
           </div>
@@ -261,18 +269,18 @@ const Dashboard: React.FC = () => {
         <div className="bg-white rounded-lg shadow p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-600">처리중</p>
-              <p className="text-3xl font-bold text-blue-600">{stats.processing}</p>
+              <p className="text-sm text-gray-600">배송중</p>
+              <p className="text-3xl font-bold text-blue-600">{stats.배송중}</p>
             </div>
-            <TrendingUp className="w-12 h-12 text-blue-500" />
+            <Truck className="w-12 h-12 text-blue-500" />
           </div>
         </div>
 
         <div className="bg-white rounded-lg shadow p-6">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-sm text-gray-600">완료</p>
-              <p className="text-3xl font-bold text-green-600">{stats.completed}</p>
+              <p className="text-sm text-gray-600">배송완료</p>
+              <p className="text-3xl font-bold text-green-600">{stats.배송완료}</p>
             </div>
             <CheckCircle className="w-12 h-12 text-green-500" />
           </div>
@@ -351,10 +359,12 @@ const Dashboard: React.FC = () => {
                   onChange={(e) => setStatusFilter(e.target.value)}
                 >
                   <option value="all">모든 상태</option>
-                  <option value="pending">접수대기</option>
-                  <option value="processing">처리중</option>
-                  <option value="completed">완료</option>
-                  <option value="cancelled">취소</option>
+                  <option value="접수완료">접수완료</option>
+                  <option value="배송준비">배송준비</option>
+                  <option value="배송중">배송중</option>
+                  <option value="배송완료">배송완료</option>
+                  <option value="취소">취소</option>
+                  <option value="반송">반송</option>
                 </select>
               </div>
             </div>
@@ -438,7 +448,11 @@ const Dashboard: React.FC = () => {
         order={selectedOrder}
         isOpen={isModalOpen}
         onClose={handleCloseModal}
-        onStatusUpdate={handleStatusUpdate}
+        onStatusUpdate={(user?.role === 'admin' || user?.role === 'manager') ? handleStatusUpdate : undefined}
+        onTrackingAssigned={() => {
+          // 운송장 할당 후 데이터 새로고침
+          fetchOrders(true);
+        }}
       />
     </div>
   );

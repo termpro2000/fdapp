@@ -1,14 +1,25 @@
-import React, { useState } from 'react';
-import { LogOut, Package, BarChart3, Plus, Users } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { LogOut, Package, BarChart3, Plus, Users, Search } from 'lucide-react';
 import { AuthContext, useAuthProvider, useAuth } from './hooks/useAuth';
 import AuthPage from './components/auth/AuthPage';
 import ShippingOrderForm from './components/shipping/ShippingOrderForm';
 import Dashboard from './components/dashboard/Dashboard';
 import UserManagement from './components/admin/UserManagement';
+import TrackingPage from './components/tracking/TrackingPage';
 
 const AppContent: React.FC = () => {
   const { user, isLoading, isAuthenticated, logout } = useAuth();
-  const [currentPage, setCurrentPage] = useState<'dashboard' | 'new-order' | 'users'>('dashboard');
+  const [currentPage, setCurrentPage] = useState<'dashboard' | 'new-order' | 'users' | 'tracking'>('dashboard');
+
+  // URL에서 tracking 모드 확인
+  useEffect(() => {
+    const urlPath = window.location.pathname;
+    const searchParams = new URLSearchParams(window.location.search);
+    
+    if (urlPath.includes('/tracking') || searchParams.has('number')) {
+      setCurrentPage('tracking');
+    }
+  }, []);
 
   if (isLoading) {
     return (
@@ -19,6 +30,11 @@ const AppContent: React.FC = () => {
         </div>
       </div>
     );
+  }
+
+  // 추적 페이지는 인증없이 접근 가능
+  if (currentPage === 'tracking') {
+    return <TrackingPage onNavigateBack={isAuthenticated ? () => setCurrentPage('dashboard') : undefined} />;
   }
 
   if (!isAuthenticated) {
@@ -71,6 +87,18 @@ const AppContent: React.FC = () => {
               >
                 <Plus className="w-5 h-5" />
                 <span className="hidden sm:inline">새 배송접수</span>
+              </button>
+
+              <button
+                onClick={() => setCurrentPage('tracking')}
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
+                  currentPage === 'tracking'
+                    ? 'bg-blue-100 text-blue-700'
+                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+                }`}
+              >
+                <Search className="w-5 h-5" />
+                <span className="hidden sm:inline">배송 추적</span>
               </button>
               
               {/* 관리자/매니저만 사용자 관리 메뉴 표시 */}
@@ -130,6 +158,8 @@ const AppContent: React.FC = () => {
             <Dashboard key={Date.now()} />
           ) : currentPage === 'users' ? (
             <UserManagement />
+          ) : currentPage === 'tracking' ? (
+            <TrackingPage onNavigateBack={() => setCurrentPage('dashboard')} />
           ) : (
             <>
               <div className="mb-6">

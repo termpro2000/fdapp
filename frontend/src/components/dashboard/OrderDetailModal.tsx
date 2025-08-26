@@ -1,29 +1,41 @@
 import React, { useState } from 'react';
-import { X, Package, User, MapPin, Truck, Clock, CheckCircle, AlertCircle, TrendingUp, Edit } from 'lucide-react';
+import { X, Package, User, MapPin, Truck, Clock, CheckCircle, AlertCircle, TrendingUp, Edit, Hash } from 'lucide-react';
 import type { ShippingOrder } from '../../types';
+import { shippingAPI } from '../../services/api';
+import { useAuth } from '../../hooks/useAuth';
 
 interface OrderDetailModalProps {
   order: ShippingOrder | null;
   isOpen: boolean;
   onClose: () => void;
   onStatusUpdate?: (orderId: number, newStatus: string) => Promise<void>;
+  onTrackingAssigned?: () => void;
 }
 
-const OrderDetailModal: React.FC<OrderDetailModalProps> = ({ order, isOpen, onClose, onStatusUpdate }) => {
+const OrderDetailModal: React.FC<OrderDetailModalProps> = ({ order, isOpen, onClose, onStatusUpdate, onTrackingAssigned }) => {
+  const { user } = useAuth();
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
   const [showStatusDropdown, setShowStatusDropdown] = useState(false);
+  const [showTrackingForm, setShowTrackingForm] = useState(false);
+  const [trackingFormData, setTrackingFormData] = useState({
+    tracking_number: '',
+    tracking_company: '',
+    estimated_delivery: ''
+  });
   
   if (!isOpen || !order) return null;
 
   const getStatusBadge = (status: string) => {
     const statusConfig = {
-      pending: { color: 'bg-yellow-100 text-yellow-800', text: '접수대기', icon: Clock },
-      processing: { color: 'bg-blue-100 text-blue-800', text: '처리중', icon: TrendingUp },
-      completed: { color: 'bg-green-100 text-green-800', text: '완료', icon: CheckCircle },
-      cancelled: { color: 'bg-red-100 text-red-800', text: '취소', icon: AlertCircle }
+      '접수완료': { color: 'bg-yellow-100 text-yellow-800', text: '접수완료', icon: Clock },
+      '배송준비': { color: 'bg-blue-100 text-blue-800', text: '배송준비', icon: TrendingUp },
+      '배송중': { color: 'bg-orange-100 text-orange-800', text: '배송중', icon: Truck },
+      '배송완료': { color: 'bg-green-100 text-green-800', text: '배송완료', icon: CheckCircle },
+      '취소': { color: 'bg-red-100 text-red-800', text: '취소', icon: AlertCircle },
+      '반송': { color: 'bg-red-100 text-red-800', text: '반송', icon: AlertCircle }
     };
     
-    const config = statusConfig[status as keyof typeof statusConfig] || statusConfig.pending;
+    const config = statusConfig[status as keyof typeof statusConfig] || statusConfig['접수완료'];
     const Icon = config.icon;
     
     return (
@@ -45,10 +57,12 @@ const OrderDetailModal: React.FC<OrderDetailModalProps> = ({ order, isOpen, onCl
   };
 
   const statusOptions = [
-    { value: 'pending', label: '접수대기', color: 'bg-yellow-500' },
-    { value: 'processing', label: '처리중', color: 'bg-blue-500' },
-    { value: 'completed', label: '완료', color: 'bg-green-500' },
-    { value: 'cancelled', label: '취소', color: 'bg-red-500' }
+    { value: '접수완료', label: '접수완료', color: 'bg-yellow-500' },
+    { value: '배송준비', label: '배송준비', color: 'bg-blue-500' },
+    { value: '배송중', label: '배송중', color: 'bg-orange-500' },
+    { value: '배송완료', label: '배송완료', color: 'bg-green-500' },
+    { value: '취소', label: '취소', color: 'bg-red-500' },
+    { value: '반송', label: '반송', color: 'bg-red-500' }
   ];
 
   const handleStatusChange = async (newStatus: string) => {
@@ -62,6 +76,39 @@ const OrderDetailModal: React.FC<OrderDetailModalProps> = ({ order, isOpen, onCl
       console.error('상태 변경 실패:', error);
     } finally {
       setIsUpdatingStatus(false);
+    }
+  };
+
+  const handleTrackingAssign = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!trackingFormData.tracking_number.trim()) {
+      alert('운송장 번호를 입력해주세요.');
+      return;
+    }
+
+    try {
+      await shippingAPI.assignTrackingNumber(order.id, {
+        tracking_number: trackingFormData.tracking_number.trim(),
+        tracking_company: trackingFormData.tracking_company.trim() || undefined,
+        estimated_delivery: trackingFormData.estimated_delivery || undefined
+      });
+      
+      setShowTrackingForm(false);
+      setTrackingFormData({
+        tracking_number: '',
+        tracking_company: '',
+        estimated_delivery: ''
+      });
+      
+      if (onTrackingAssigned) {
+        onTrackingAssigned();
+      }
+      
+      alert('운송장 번호가 성공적으로 할당되었습니다.');
+    } catch (error: any) {
+      console.error('운송장 할당 실패:', error);
+      alert(error.response?.data?.message || '운송장 할당 중 오류가 발생했습니다.');
     }
   };
 
@@ -90,6 +137,18 @@ const OrderDetailModal: React.FC<OrderDetailModalProps> = ({ order, isOpen, onCl
               </div>
               
               <div className="flex items-center gap-3">
+                {/* 관리자/매니저만 운송장 할당 버튼 표시 */}
+                {(user?.role === 'admin' || user?.role === 'manager') && !order.tracking_number && (
+                  <button
+                    onClick={() => setShowTrackingForm(true)}
+                    className="px-3 py-1 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors text-sm flex items-center gap-1"
+                    title="운송장 번호 할당"
+                  >
+                    <Hash className="w-4 h-4" />
+                    운송장 할당
+                  </button>
+                )}
+                
                 <div className="relative">
                   {getStatusBadge(order.status)}
                   {onStatusUpdate && (
@@ -266,7 +325,19 @@ const OrderDetailModal: React.FC<OrderDetailModalProps> = ({ order, isOpen, onCl
                     </div>
                     <div>
                       <label className="text-sm font-medium text-gray-600">운송장번호</label>
-                      <p className="text-sm text-gray-900 mt-1 font-mono">{order.tracking_number || '미배정'}</p>
+                      <div className="mt-1 flex items-center gap-2">
+                        <p className="text-sm text-gray-900 font-mono">{order.tracking_number || '미배정'}</p>
+                        {order.tracking_number && (
+                          <a
+                            href={`/tracking?number=${order.tracking_number}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-blue-500 hover:text-blue-700 text-xs underline"
+                          >
+                            추적
+                          </a>
+                        )}
+                      </div>
                     </div>
                   </div>
                   
@@ -317,17 +388,118 @@ const OrderDetailModal: React.FC<OrderDetailModalProps> = ({ order, isOpen, onCl
               </div>
             </div>
 
-            {/* 배송 상태 히스토리 (향후 구현 예정) */}
-            <div className="mt-8 bg-blue-50 rounded-lg p-6">
-              <h4 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                <Clock className="w-5 h-5 text-blue-500" />
-                배송 추적 정보
-              </h4>
-              <div className="text-center py-8 text-gray-500">
-                <Package className="w-12 h-12 mx-auto mb-3 text-gray-400" />
-                <p>배송 추적 기능은 향후 업데이트에서 제공될 예정입니다.</p>
+            {/* 운송장 할당 폼 */}
+            {showTrackingForm && (user?.role === 'admin' || user?.role === 'manager') && (
+              <div className="mt-8 bg-blue-50 border border-blue-200 rounded-lg p-6">
+                <h4 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                  <Hash className="w-5 h-5 text-blue-500" />
+                  운송장 번호 할당
+                </h4>
+                
+                <form onSubmit={handleTrackingAssign} className="space-y-4">
+                  <div className="grid md:grid-cols-2 gap-4">
+                    <div>
+                      <label htmlFor="tracking_number" className="block text-sm font-medium text-gray-700 mb-1">
+                        운송장 번호 *
+                      </label>
+                      <input
+                        type="text"
+                        id="tracking_number"
+                        value={trackingFormData.tracking_number}
+                        onChange={(e) => setTrackingFormData(prev => ({ ...prev, tracking_number: e.target.value }))}
+                        placeholder="운송장 번호를 입력하세요"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        required
+                      />
+                    </div>
+                    
+                    <div>
+                      <label htmlFor="tracking_company" className="block text-sm font-medium text-gray-700 mb-1">
+                        택배회사
+                      </label>
+                      <input
+                        type="text"
+                        id="tracking_company"
+                        value={trackingFormData.tracking_company}
+                        onChange={(e) => setTrackingFormData(prev => ({ ...prev, tracking_company: e.target.value }))}
+                        placeholder="예: CJ대한통운, 롯데택배"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      />
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <label htmlFor="estimated_delivery" className="block text-sm font-medium text-gray-700 mb-1">
+                      예상 배송일
+                    </label>
+                    <input
+                      type="date"
+                      id="estimated_delivery"
+                      value={trackingFormData.estimated_delivery}
+                      onChange={(e) => setTrackingFormData(prev => ({ ...prev, estimated_delivery: e.target.value }))}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    />
+                  </div>
+                  
+                  <div className="flex justify-end gap-3 pt-4">
+                    <button
+                      type="button"
+                      onClick={() => setShowTrackingForm(false)}
+                      className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
+                    >
+                      취소
+                    </button>
+                    <button
+                      type="submit"
+                      className="px-4 py-2 text-sm font-medium text-white bg-blue-600 border border-transparent rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                      할당하기
+                    </button>
+                  </div>
+                </form>
               </div>
-            </div>
+            )}
+
+            {/* 배송 추적 정보 */}
+            {order.tracking_number && (
+              <div className="mt-8 bg-green-50 border border-green-200 rounded-lg p-6">
+                <h4 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                  <Truck className="w-5 h-5 text-green-500" />
+                  배송 추적 정보
+                </h4>
+                
+                <div className="grid md:grid-cols-3 gap-4 mb-4">
+                  <div>
+                    <span className="text-sm font-medium text-gray-600">운송장 번호</span>
+                    <p className="text-lg font-mono text-gray-900">{order.tracking_number}</p>
+                  </div>
+                  {order.tracking_company && (
+                    <div>
+                      <span className="text-sm font-medium text-gray-600">택배회사</span>
+                      <p className="text-lg text-gray-900">{order.tracking_company}</p>
+                    </div>
+                  )}
+                  {order.estimated_delivery && (
+                    <div>
+                      <span className="text-sm font-medium text-gray-600">예상 배송일</span>
+                      <p className="text-lg text-gray-900">{new Date(order.estimated_delivery).toLocaleDateString('ko-KR')}</p>
+                    </div>
+                  )}
+                </div>
+                
+                <div className="flex justify-center">
+                  <a
+                    href={`/tracking?number=${order.tracking_number}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+                  >
+                    <Truck className="w-5 h-5" />
+                    배송 추적하기
+                  </a>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* 모달 푸터 */}
