@@ -1,0 +1,105 @@
+import { useState, useEffect, createContext, useContext } from 'react';
+import type { User, LoginData, RegisterData } from '../types';
+import { authAPI } from '../services/api';
+
+interface AuthContextType {
+  user: User | null;
+  isLoading: boolean;
+  isAuthenticated: boolean;
+  login: (data: LoginData) => Promise<void>;
+  register: (data: RegisterData) => Promise<void>;
+  logout: () => Promise<void>;
+  checkUsername: (username: string) => Promise<{ available: boolean; message: string }>;
+}
+
+const AuthContext = createContext<AuthContextType | undefined>(undefined);
+
+export const useAuth = () => {
+  const context = useContext(AuthContext);
+  if (context === undefined) {
+    throw new Error('useAuth must be used within an AuthProvider');
+  }
+  return context;
+};
+
+export const useAuthProvider = (): AuthContextType => {
+  const [user, setUser] = useState<User | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // 초기 로드 시 세션 확인
+  useEffect(() => {
+    checkSession();
+  }, []);
+
+  const checkSession = async () => {
+    try {
+      setIsLoading(true);
+      const response = await authAPI.me();
+      if (response.authenticated && response.user) {
+        setUser(response.user);
+      }
+    } catch (error) {
+      console.log('세션 없음 또는 만료됨');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const login = async (data: LoginData) => {
+    try {
+      const response = await authAPI.login(data);
+      if (response.user) {
+        setUser(response.user);
+      }
+    } catch (error: any) {
+      const message = error.response?.data?.message || '로그인에 실패했습니다.';
+      throw new Error(message);
+    }
+  };
+
+  const register = async (data: RegisterData) => {
+    try {
+      await authAPI.register(data);
+      // 회원가입 성공 후 자동 로그인
+      await login({
+        username: data.username,
+        password: data.password
+      });
+    } catch (error: any) {
+      const message = error.response?.data?.message || '회원가입에 실패했습니다.';
+      throw new Error(message);
+    }
+  };
+
+  const logout = async () => {
+    try {
+      await authAPI.logout();
+      setUser(null);
+    } catch (error) {
+      console.error('로그아웃 오류:', error);
+      // 로그아웃은 서버 오류가 있어도 클라이언트에서는 처리
+      setUser(null);
+    }
+  };
+
+  const checkUsername = async (username: string) => {
+    try {
+      return await authAPI.checkUsername(username);
+    } catch (error: any) {
+      const message = error.response?.data?.message || '아이디 확인에 실패했습니다.';
+      throw new Error(message);
+    }
+  };
+
+  return {
+    user,
+    isLoading,
+    isAuthenticated: !!user,
+    login,
+    register,
+    logout,
+    checkUsername
+  };
+};
+
+export { AuthContext };
