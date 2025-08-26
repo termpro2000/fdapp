@@ -18,12 +18,16 @@ const STEPS = [
 const PACKAGE_TYPES = ['문서', '소포', '박스', '팔레트'];
 const DELIVERY_TYPES = ['일반', '당일', '익일', '지정일'];
 
-const ShippingOrderForm: React.FC = () => {
+interface ShippingOrderFormProps {
+  onSuccess?: () => void;
+}
+
+const ShippingOrderForm: React.FC<ShippingOrderFormProps> = ({ onSuccess }) => {
   const [currentStep, setCurrentStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitResult, setSubmitResult] = useState<{ success: boolean; message: string; trackingNumber?: string } | null>(null);
 
-  const { register, handleSubmit, formState: { errors }, watch, setValue, trigger } = useForm<ShippingOrderData>({
+  const { register, handleSubmit, formState: { errors }, watch, trigger } = useForm<ShippingOrderData>({
     defaultValues: {
       package_type: '소포',
       delivery_type: '일반',
@@ -76,6 +80,13 @@ const ShippingOrderForm: React.FC = () => {
         message: '배송접수가 완료되었습니다!',
         trackingNumber: response.trackingNumber
       });
+      
+      // 성공 시 대시보드로 이동
+      if (onSuccess) {
+        setTimeout(() => {
+          onSuccess();
+        }, 2000); // 2초 후 대시보드로 이동
+      }
     } catch (error: any) {
       setSubmitResult({
         success: false,

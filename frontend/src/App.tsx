@@ -1,11 +1,14 @@
-import React from 'react';
-import { LogOut, Package } from 'lucide-react';
+import React, { useState } from 'react';
+import { LogOut, Package, BarChart3, Plus, Users } from 'lucide-react';
 import { AuthContext, useAuthProvider, useAuth } from './hooks/useAuth';
 import AuthPage from './components/auth/AuthPage';
 import ShippingOrderForm from './components/shipping/ShippingOrderForm';
+import Dashboard from './components/dashboard/Dashboard';
+import UserManagement from './components/admin/UserManagement';
 
 const AppContent: React.FC = () => {
   const { user, isLoading, isAuthenticated, logout } = useAuth();
+  const [currentPage, setCurrentPage] = useState<'dashboard' | 'new-order' | 'users'>('dashboard');
 
   if (isLoading) {
     return (
@@ -44,10 +47,67 @@ const AppContent: React.FC = () => {
               </div>
             </div>
             
+            {/* 네비게이션 메뉴 */}
+            <nav className="flex items-center gap-2">
+              <button
+                onClick={() => setCurrentPage('dashboard')}
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
+                  currentPage === 'dashboard'
+                    ? 'bg-blue-100 text-blue-700'
+                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+                }`}
+              >
+                <BarChart3 className="w-5 h-5" />
+                <span className="hidden sm:inline">대시보드</span>
+              </button>
+              
+              <button
+                onClick={() => setCurrentPage('new-order')}
+                className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
+                  currentPage === 'new-order'
+                    ? 'bg-blue-100 text-blue-700'
+                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+                }`}
+              >
+                <Plus className="w-5 h-5" />
+                <span className="hidden sm:inline">새 배송접수</span>
+              </button>
+              
+              {/* 관리자/매니저만 사용자 관리 메뉴 표시 */}
+              {(user?.role === 'admin' || user?.role === 'manager') && (
+                <button
+                  onClick={() => setCurrentPage('users')}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
+                    currentPage === 'users'
+                      ? 'bg-blue-100 text-blue-700'
+                      : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+                  }`}
+                >
+                  <Users className="w-5 h-5" />
+                  <span className="hidden sm:inline">사용자 관리</span>
+                </button>
+              )}
+            </nav>
+            
             <div className="flex items-center gap-4">
               <div className="text-right">
-                <p className="text-sm font-medium text-gray-900">{user?.name}님</p>
-                <p className="text-xs text-gray-500">@{user?.username}</p>
+                <div className="flex items-center gap-2">
+                  <div>
+                    <p className="text-sm font-medium text-gray-900">{user?.name}님</p>
+                    <p className="text-xs text-gray-500">@{user?.username}</p>
+                  </div>
+                  {user?.role && (
+                    <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                      user.role === 'admin' 
+                        ? 'bg-red-100 text-red-800' 
+                        : user.role === 'manager'
+                        ? 'bg-blue-100 text-blue-800'
+                        : 'bg-gray-100 text-gray-800'
+                    }`}>
+                      {user.role === 'admin' ? '관리자' : user.role === 'manager' ? '매니저' : '사용자'}
+                    </span>
+                  )}
+                </div>
               </div>
               
               <button
@@ -66,15 +126,23 @@ const AppContent: React.FC = () => {
       {/* 메인 콘텐츠 */}
       <main className="py-8">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="mb-6">
-            <h2 className="text-2xl font-bold text-gray-900 mb-2">새 배송 접수</h2>
-            <p className="text-gray-600">
-              배송할 물품의 정보를 입력하여 접수를 완료하세요. 
-              총 26개의 필드를 단계별로 입력할 수 있습니다.
-            </p>
-          </div>
-          
-          <ShippingOrderForm />
+          {currentPage === 'dashboard' ? (
+            <Dashboard key={Date.now()} />
+          ) : currentPage === 'users' ? (
+            <UserManagement />
+          ) : (
+            <>
+              <div className="mb-6">
+                <h2 className="text-2xl font-bold text-gray-900 mb-2">새 배송 접수</h2>
+                <p className="text-gray-600">
+                  배송할 물품의 정보를 입력하여 접수를 완료하세요. 
+                  총 26개의 필드를 단계별로 입력할 수 있습니다.
+                </p>
+              </div>
+              
+              <ShippingOrderForm onSuccess={() => setCurrentPage('dashboard')} />
+            </>
+          )}
         </div>
       </main>
       

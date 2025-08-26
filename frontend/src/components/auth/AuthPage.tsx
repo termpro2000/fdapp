@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
-import { User, Lock, Mail, Phone, Building, Eye, EyeOff, AlertCircle } from 'lucide-react';
+import { User, Lock, Phone, Building, Eye, EyeOff, AlertCircle } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import type { LoginData, RegisterData } from '../../types';
 
@@ -268,7 +268,7 @@ const AuthPage: React.FC = () => {
 
             <button
               type="submit"
-              disabled={isSubmitting || (usernameCheck && !usernameCheck.available)}
+              disabled={isSubmitting || (usernameCheck && !usernameCheck.available) || false}
               className="w-full bg-blue-500 hover:bg-blue-600 disabled:bg-blue-300 text-white font-medium py-3 rounded-lg transition-colors"
             >
               {isSubmitting ? '가입 중...' : '회원가입'}
