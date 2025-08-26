@@ -222,9 +222,71 @@ async function trackShipment(req, res) {
   }
 }
 
+// 배송 접수 상태 업데이트
+async function updateShippingOrderStatus(req, res) {
+  try {
+    if (!req.session.user) {
+      return res.status(401).json({
+        error: 'Unauthorized',
+        message: '로그인이 필요합니다.'
+      });
+    }
+
+    const { id } = req.params;
+    const { status } = req.body;
+
+    // 유효한 상태값 확인
+    const validStatuses = ['pending', 'processing', 'completed', 'cancelled'];
+    if (!validStatuses.includes(status)) {
+      return res.status(400).json({
+        error: 'Bad Request',
+        message: '유효하지 않은 상태값입니다.'
+      });
+    }
+
+    // 주문이 해당 사용자의 것인지 확인
+    const [existingOrder] = await pool.execute(
+      'SELECT id FROM shipping_orders WHERE id = ? AND user_id = ?',
+      [id, req.session.user.id]
+    );
+
+    if (existingOrder.length === 0) {
+      return res.status(404).json({
+        error: 'Not Found',
+        message: '주문을 찾을 수 없습니다.'
+      });
+    }
+
+    // 상태 업데이트
+    await pool.execute(
+      'UPDATE shipping_orders SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ? AND user_id = ?',
+      [status, id, req.session.user.id]
+    );
+
+    // 업데이트된 주문 정보 반환
+    const [updatedOrder] = await pool.execute(
+      'SELECT * FROM shipping_orders WHERE id = ? AND user_id = ?',
+      [id, req.session.user.id]
+    );
+
+    res.json({
+      message: '주문 상태가 성공적으로 업데이트되었습니다.',
+      order: updatedOrder[0]
+    });
+
+  } catch (error) {
+    console.error('배송 접수 상태 업데이트 오류:', error);
+    res.status(500).json({
+      error: 'Internal Server Error',
+      message: '상태 업데이트 중 오류가 발생했습니다.'
+    });
+  }
+}
+
 module.exports = {
   createShippingOrder,
   getShippingOrders,
   getShippingOrder,
+  updateShippingOrderStatus,
   trackShipment
 };

@@ -1,10 +1,5 @@
 const { pool } = require('../config/database');
-const crypto = require('crypto');
-
-// 비밀번호 해싱 함수 (간단한 예시 - 실제로는 bcrypt 사용 권장)
-function hashPassword(password) {
-  return crypto.createHash('sha256').update(password).digest('hex');
-}
+const bcrypt = require('bcryptjs');
 
 // 회원가입
 async function register(req, res) {
@@ -33,7 +28,7 @@ async function register(req, res) {
     }
 
     // 비밀번호 해싱
-    const hashedPassword = hashPassword(password);
+    const hashedPassword = await bcrypt.hash(password, 10);
 
     // 사용자 생성
     const [result] = await pool.execute(
@@ -91,12 +86,10 @@ async function login(req, res) {
       });
     }
 
-    const hashedPassword = hashPassword(password);
-
-    // 사용자 인증
+    // 사용자 조회 (비밀번호는 별도로 검증)
     const [users] = await pool.execute(
-      'SELECT id, username, name, phone, company, created_at FROM users WHERE username = ? AND password = ?',
-      [username, hashedPassword]
+      'SELECT id, username, password, name, phone, company, role, is_active, created_at FROM users WHERE username = ?',
+      [username]
     );
 
     if (users.length === 0) {
@@ -108,13 +101,38 @@ async function login(req, res) {
 
     const user = users[0];
 
+    // 비밀번호 검증
+    const isValidPassword = await bcrypt.compare(password, user.password);
+    
+    if (!isValidPassword) {
+      return res.status(401).json({
+        error: 'Unauthorized',
+        message: '아이디 또는 비밀번호가 올바르지 않습니다.'
+      });
+    }
+
+    // 계정 비활성화 확인
+    if (!user.is_active) {
+      return res.status(401).json({
+        error: 'Unauthorized',
+        message: '비활성화된 계정입니다. 관리자에게 문의하세요.'
+      });
+    }
+
+    // 마지막 로그인 시간 업데이트
+    await pool.execute(
+      'UPDATE users SET last_login = CURRENT_TIMESTAMP WHERE id = ?',
+      [user.id]
+    );
+
     // 세션에 사용자 정보 저장
     req.session.user = {
       id: user.id,
       username: user.username,
       name: user.name,
       phone: user.phone,
-      company: user.company
+      company: user.company,
+      role: user.role
     };
 
     res.json({

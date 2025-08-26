@@ -42,7 +42,11 @@ async function initDatabase() {
         name VARCHAR(100) NOT NULL,
         phone VARCHAR(20),
         company VARCHAR(100),
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        role ENUM('admin', 'manager', 'user') DEFAULT 'user',
+        is_active BOOLEAN DEFAULT TRUE,
+        last_login TIMESTAMP NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
     `);
 
@@ -100,7 +104,36 @@ async function initDatabase() {
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
     `);
 
+    // user_activities 테이블 생성 (사용자 활동 로그)
+    await pool.execute(`
+      CREATE TABLE IF NOT EXISTS user_activities (
+        id INT PRIMARY KEY AUTO_INCREMENT,
+        user_id INT NOT NULL,
+        action VARCHAR(100) NOT NULL,
+        target_type VARCHAR(50),
+        target_id INT,
+        details JSON,
+        ip_address VARCHAR(45),
+        user_agent TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        
+        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+        INDEX idx_user_created (user_id, created_at),
+        INDEX idx_action_created (action, created_at)
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+    `);
+
+    // 기본 관리자 계정 생성 (존재하지 않는 경우에만)
+    const bcrypt = require('bcryptjs');
+    const adminPassword = await bcrypt.hash('admin123', 10);
+    
+    await pool.execute(`
+      INSERT IGNORE INTO users (username, password, name, role) 
+      VALUES ('admin', ?, '시스템 관리자', 'admin')
+    `, [adminPassword]);
+
     console.log('✅ 데이터베이스 테이블 초기화 완료');
+    console.log('📝 기본 관리자 계정: admin / admin123');
     return true;
   } catch (error) {
     console.error('❌ 데이터베이스 초기화 실패:', error.message);
