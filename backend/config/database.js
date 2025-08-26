@@ -95,8 +95,10 @@ async function initDatabase() {
         special_instructions TEXT,
         
         -- 시스템 필드
-        status VARCHAR(20) DEFAULT '접수완료',
+        status ENUM('접수완료', '배송준비', '배송중', '배송완료', '취소', '반송') DEFAULT '접수완료',
         tracking_number VARCHAR(50) UNIQUE,
+        tracking_company VARCHAR(50),
+        estimated_delivery DATE,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
         

@@ -92,8 +92,6 @@ async function getUser(req, res) {
 // 사용자 생성 (관리자만)
 async function createUser(req, res) {
   try {
-    console.log('사용자 생성 요청:', req.body);
-    console.log('세션 사용자:', req.session?.user);
     const { username, password, name, phone, company, role = 'user' } = req.body;
 
     // 유효성 검사
@@ -121,7 +119,6 @@ async function createUser(req, res) {
     const hashedPassword = await bcrypt.hash(password, 10);
 
     // 사용자 생성 (undefined를 null로 변환)
-    console.log('SQL 파라미터:', [username, hashedPassword, name, phone || null, company || null, role]);
     const [result] = await pool.execute(`
       INSERT INTO users (username, password, name, phone, company, role)
       VALUES (?, ?, ?, ?, ?, ?)
@@ -133,7 +130,6 @@ async function createUser(req, res) {
       company || null, 
       role
     ]);
-    console.log('사용자 생성 성공:', result.insertId);
 
     // 활동 로그 기록
     await logUserActivity(req.session.user.id, 'create_user', 'user', result.insertId, {
