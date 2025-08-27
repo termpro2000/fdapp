@@ -5,6 +5,7 @@ export interface User {
   name: string;
   phone?: string;
   company?: string;
+  role?: string;
 }
 
 // 인증 관련 타입
@@ -109,6 +110,8 @@ export interface ShippingOrder {
   // 시스템 필드
   status: string;
   tracking_number?: string;
+  tracking_company?: string;
+  estimated_delivery?: string;
   created_at: string;
   updated_at: string;
 }

@@ -20,7 +20,8 @@ const AppContent: React.FC = () => {
     notifyOrderStatusChange,
     notifyNewOrder
   } = useNotification();
-  const [currentPage, setCurrentPage] = useState<'dashboard' | 'new-order' | 'users' | 'tracking'>('dashboard');
+  type PageType = 'dashboard' | 'new-order' | 'users' | 'tracking';
+  const [currentPage, setCurrentPage] = useState<PageType>('dashboard');
   const [showPermissionRequest, setShowPermissionRequest] = useState(false);
 
   // URL에서 tracking 모드 확인
@@ -29,7 +30,7 @@ const AppContent: React.FC = () => {
     const searchParams = new URLSearchParams(window.location.search);
     
     if (urlPath.includes('/tracking') || searchParams.has('number')) {
-      setCurrentPage('tracking');
+      setCurrentPage('tracking' as PageType);
     }
   }, []);
 
@@ -57,7 +58,7 @@ const AppContent: React.FC = () => {
 
   // 추적 페이지는 인증없이 접근 가능
   if (currentPage === 'tracking') {
-    return <TrackingPage onNavigateBack={isAuthenticated ? () => setCurrentPage('dashboard') : undefined} />;
+    return <TrackingPage onNavigateBack={isAuthenticated ? () => setCurrentPage('dashboard' as PageType) : undefined} />;
   }
 
   if (!isAuthenticated) {
@@ -89,7 +90,7 @@ const AppContent: React.FC = () => {
             {/* 네비게이션 메뉴 */}
             <nav className="flex items-center gap-1 sm:gap-2">
               <button
-                onClick={() => setCurrentPage('dashboard')}
+                onClick={() => setCurrentPage('dashboard' as PageType)}
                 className={`flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg transition-colors touch-manipulation ${
                   currentPage === 'dashboard'
                     ? 'bg-blue-100 text-blue-700'
@@ -101,7 +102,7 @@ const AppContent: React.FC = () => {
               </button>
               
               <button
-                onClick={() => setCurrentPage('new-order')}
+                onClick={() => setCurrentPage('new-order' as PageType)}
                 className={`flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg transition-colors touch-manipulation ${
                   currentPage === 'new-order'
                     ? 'bg-blue-100 text-blue-700'
@@ -113,9 +114,9 @@ const AppContent: React.FC = () => {
               </button>
 
               <button
-                onClick={() => setCurrentPage('tracking')}
+                onClick={() => setCurrentPage('tracking' as PageType)}
                 className={`flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg transition-colors touch-manipulation ${
-                  currentPage === 'tracking'
+                  (currentPage as string) === 'tracking'
                     ? 'bg-blue-100 text-blue-700'
                     : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
                 }`}
@@ -145,7 +146,7 @@ const AppContent: React.FC = () => {
               {/* 관리자/매니저만 사용자 관리 메뉴 표시 */}
               {(user?.role === 'admin' || user?.role === 'manager') && (
                 <button
-                  onClick={() => setCurrentPage('users')}
+                  onClick={() => setCurrentPage('users' as PageType)}
                   className={`flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg transition-colors touch-manipulation ${
                     currentPage === 'users'
                       ? 'bg-blue-100 text-blue-700'
@@ -217,8 +218,8 @@ const AppContent: React.FC = () => {
             />
           ) : currentPage === 'users' ? (
             <UserManagement />
-          ) : currentPage === 'tracking' ? (
-            <TrackingPage onNavigateBack={() => setCurrentPage('dashboard')} />
+          ) : (currentPage as string) === 'tracking' ? (
+            <TrackingPage onNavigateBack={() => setCurrentPage('dashboard' as PageType)} />
           ) : (
             <>
               <div className="mb-6">
@@ -230,7 +231,7 @@ const AppContent: React.FC = () => {
               </div>
               
               <ShippingOrderForm 
-                onSuccess={() => setCurrentPage('dashboard')}
+                onSuccess={() => setCurrentPage('dashboard' as PageType)}
                 onNewOrder={notifyNewOrder}
               />
             </>

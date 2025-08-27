@@ -61,7 +61,7 @@ const Dashboard: React.FC<DashboardProps> = ({ onOrderStatusChange }) => {
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [showExportModal, setShowExportModal] = useState(false);
-  const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  const intervalRef = useRef<number | null>(null);
   const visibilityRef = useRef<boolean>(true);
 
   /**

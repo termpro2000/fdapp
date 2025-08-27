@@ -97,12 +97,14 @@ const ToastContainer: React.FC<ToastContainerProps> = ({ toasts, onRemoveToast }
         </div>
       ))}
       
-      <style jsx>{`
-        @keyframes shrink {
-          from { width: 100%; }
-          to { width: 0%; }
-        }
-      `}</style>
+      <style dangerouslySetInnerHTML={{
+        __html: `
+          @keyframes shrink {
+            from { width: 100%; }
+            to { width: 0%; }
+          }
+        `
+      }} />
     </div>
   );
 };

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Users, Plus, Edit, Trash2, Search, Shield, UserCheck, UserX, Eye, EyeOff } from 'lucide-react';
+import { Users, Plus, Edit, Trash2, Search, Eye, EyeOff } from 'lucide-react';
 import { userAPI } from '../../services/api';
 import { useAuth } from '../../hooks/useAuth';
 

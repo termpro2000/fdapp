@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Search, Package, Clock, CheckCircle, Truck, Home, AlertCircle, ArrowLeft } from 'lucide-react';
+import { Search, Package, Clock, CheckCircle, Truck, AlertCircle, ArrowLeft } from 'lucide-react';
 import { shippingAPI } from '../../services/api';
 
 interface TrackingInfo {
