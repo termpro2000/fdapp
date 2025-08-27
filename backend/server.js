@@ -33,6 +33,7 @@ app.use(session({
   secret: process.env.SESSION_SECRET || 'your-super-secret-session-key',
   resave: false,
   saveUninitialized: false,
+  name: 'sessionId', // 명시적 세션 이름
   cookie: {
     secure: process.env.NODE_ENV === 'production',
     httpOnly: true,
@@ -40,6 +41,14 @@ app.use(session({
     sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax'
   }
 }));
+
+// 디버그 미들웨어 추가
+app.use((req, res, next) => {
+  console.log(`${new Date().toISOString()} - ${req.method} ${req.path}`);
+  console.log('Session ID:', req.sessionID);
+  console.log('Session exists:', !!req.session);
+  next();
+});
 
 // Routes
 app.get('/', (req, res) => {

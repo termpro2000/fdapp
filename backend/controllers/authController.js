@@ -169,9 +169,12 @@ async function login(req, res) {
 
   } catch (error) {
     console.error('로그인 오류:', error);
+    console.error('Error stack:', error.stack);
+    console.error('Session secret exists:', !!process.env.SESSION_SECRET);
     res.status(500).json({
       error: 'Internal Server Error',
-      message: '로그인 처리 중 오류가 발생했습니다.'
+      message: '로그인 처리 중 오류가 발생했습니다.',
+      debug: process.env.NODE_ENV !== 'production' ? error.message : undefined
     });
   }
 }
