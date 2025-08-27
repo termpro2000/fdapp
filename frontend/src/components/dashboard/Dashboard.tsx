@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Package, TrendingUp, Clock, CheckCircle, AlertCircle, Eye, Search, Filter, RefreshCw, Pause, Play, Truck } from 'lucide-react';
+import { Package, TrendingUp, Clock, CheckCircle, AlertCircle, Eye, Search, Filter, RefreshCw, Pause, Play, Truck, Download, FileSpreadsheet, FileText } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { api, shippingAPI } from '../../services/api';
 import type { ShippingOrder } from '../../types';
@@ -15,7 +15,16 @@ interface DashboardStats {
   반송: number;
 }
 
-const Dashboard: React.FC = () => {
+interface DashboardProps {
+  onOrderStatusChange?: (orderInfo: {
+    orderId: number;
+    status: string;
+    customerName?: string;
+    trackingNumber?: string;
+  }) => void;
+}
+
+const Dashboard: React.FC<DashboardProps> = ({ onOrderStatusChange }) => {
   const { user } = useAuth();
   const [orders, setOrders] = useState<ShippingOrder[]>([]);
   const [stats, setStats] = useState<DashboardStats>({
@@ -32,10 +41,12 @@ const Dashboard: React.FC = () => {
   const [statusFilter, setStatusFilter] = useState('all');
   const [selectedOrder, setSelectedOrder] = useState<ShippingOrder | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [notification, setNotification] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
   const [isAutoRefreshEnabled, setIsAutoRefreshEnabled] = useState(true);
   const [lastUpdated, setLastUpdated] = useState<Date>(new Date());
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
+  const [showExportModal, setShowExportModal] = useState(false);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const visibilityRef = useRef<boolean>(true);
 
@@ -185,24 +196,61 @@ const Dashboard: React.FC = () => {
         setSelectedOrder({ ...selectedOrder, status: newStatus });
       }
       
-      // 성공 알림
-      setNotification({
-        type: 'success',
-        message: '주문 상태가 성공적으로 업데이트되었습니다.'
-      });
-      
-      // 3초 후 알림 제거
-      setTimeout(() => setNotification(null), 3000);
+      // 알림 발송
+      if (onOrderStatusChange && selectedOrder) {
+        onOrderStatusChange({
+          orderId: orderId,
+          status: newStatus,
+          customerName: selectedOrder.receiver_name,
+          trackingNumber: selectedOrder.tracking_number
+        });
+      }
       
     } catch (error: any) {
       console.error('상태 업데이트 실패:', error);
-      setNotification({
-        type: 'error',
-        message: error.response?.data?.message || '상태 업데이트 중 오류가 발생했습니다.'
-      });
+    }
+  };
+
+  // 데이터 내보내기 함수
+  const handleExport = async (format: 'xlsx' | 'csv', type: 'orders' | 'statistics') => {
+    try {
+      const params = new URLSearchParams();
+      params.append('format', format);
       
-      // 5초 후 알림 제거
-      setTimeout(() => setNotification(null), 5000);
+      if (startDate) params.append('startDate', startDate);
+      if (endDate) params.append('endDate', endDate);
+      if (statusFilter !== 'all') params.append('status', statusFilter);
+      
+      const endpoint = type === 'orders' ? 'orders' : 'statistics';
+      const url = `/api/exports/${endpoint}?${params.toString()}`;
+      
+      // 파일 다운로드
+      const response = await fetch(url, {
+        method: 'GET',
+        credentials: 'include',
+      });
+
+      if (!response.ok) {
+        throw new Error('Export failed');
+      }
+
+      const blob = await response.blob();
+      const filename = response.headers.get('Content-Disposition')?.match(/filename="(.+)"/)?.[1] || 
+                     `export_${type}_${new Date().toISOString().split('T')[0]}.${format}`;
+      
+      // 파일 다운로드 트리거
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = decodeURIComponent(filename);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(link.href);
+      
+      setShowExportModal(false);
+    } catch (error) {
+      console.error('Export error:', error);
+      alert('데이터 내보내기 중 오류가 발생했습니다.');
     }
   };
 
@@ -219,23 +267,6 @@ const Dashboard: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      {/* 알림 메시지 */}
-      {notification && (
-        <div className={`fixed top-4 right-4 z-50 p-4 rounded-lg shadow-lg border ${
-          notification.type === 'success' 
-            ? 'bg-green-50 text-green-800 border-green-200' 
-            : 'bg-red-50 text-red-800 border-red-200'
-        }`}>
-          <div className="flex items-center gap-2">
-            {notification.type === 'success' ? (
-              <CheckCircle className="w-5 h-5" />
-            ) : (
-              <AlertCircle className="w-5 h-5" />
-            )}
-            <span className="font-medium">{notification.message}</span>
-          </div>
-        </div>
-      )}
       {/* 환영 메시지 */}
       <div className="bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg p-6 text-white">
         <h2 className="text-2xl font-bold mb-2">안녕하세요, {user?.name}님! 👋</h2>
@@ -303,75 +334,93 @@ const Dashboard: React.FC = () => {
               </div>
             </div>
             
-            <div className="flex flex-col sm:flex-row gap-3">
-              {/* 새로고침 컨트롤 */}
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={handleManualRefresh}
-                  disabled={isRefreshing}
-                  className="flex items-center gap-1 px-3 py-2 text-sm bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 transition-colors"
-                  title="수동 새로고침"
-                >
-                  <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
-                  새로고침
-                </button>
-                
-                <button
-                  onClick={toggleAutoRefresh}
-                  className={`flex items-center gap-1 px-3 py-2 text-sm rounded-lg border transition-colors ${
-                    isAutoRefreshEnabled 
-                      ? 'bg-green-50 text-green-700 border-green-200 hover:bg-green-100' 
-                      : 'bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-100'
-                  }`}
-                  title={isAutoRefreshEnabled ? '자동 새로고침 끄기' : '자동 새로고침 켜기'}
-                >
-                  {isAutoRefreshEnabled ? (
-                    <>
-                      <Pause className="w-4 h-4" />
-                      자동새로고침 ON
-                    </>
-                  ) : (
-                    <>
-                      <Play className="w-4 h-4" />
-                      자동새로고침 OFF
-                    </>
-                  )}
-                </button>
+            <div className="flex flex-col gap-4">
+              {/* 모바일: 상단 컨트롤 행 */}
+              <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
+                {/* 새로고침 컨트롤 */}
+                <div className="flex items-center gap-2 w-full sm:w-auto">
+                  <button
+                    onClick={handleManualRefresh}
+                    disabled={isRefreshing}
+                    className="flex items-center gap-1 px-3 py-2 text-sm bg-white border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 transition-colors touch-manipulation"
+                    title="수동 새로고침"
+                  >
+                    <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+                    <span className="hidden xs:inline">새로고침</span>
+                  </button>
+                  
+                  <button
+                    onClick={toggleAutoRefresh}
+                    className={`flex items-center gap-1 px-3 py-2 text-sm rounded-lg border transition-colors touch-manipulation ${
+                      isAutoRefreshEnabled 
+                        ? 'bg-green-50 text-green-700 border-green-200 hover:bg-green-100' 
+                        : 'bg-gray-50 text-gray-700 border-gray-200 hover:bg-gray-100'
+                    }`}
+                    title={isAutoRefreshEnabled ? '자동 새로고침 끄기' : '자동 새로고침 켜기'}
+                  >
+                    {isAutoRefreshEnabled ? (
+                      <>
+                        <Pause className="w-4 h-4" />
+                        <span className="hidden xs:inline">자동 ON</span>
+                      </>
+                    ) : (
+                      <>
+                        <Play className="w-4 h-4" />
+                        <span className="hidden xs:inline">자동 OFF</span>
+                      </>
+                    )}
+                  </button>
+                  
+                  {/* 데이터 내보내기 버튼 */}
+                  <button
+                    onClick={() => setShowExportModal(true)}
+                    className="flex items-center gap-2 px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors touch-manipulation"
+                    title="데이터 내보내기"
+                  >
+                    <Download className="w-4 h-4" />
+                    <span className="hidden xs:inline">내보내기</span>
+                  </button>
+                </div>
               </div>
-              {/* 검색 */}
-              <div className="relative">
-                <Search className="w-5 h-5 absolute left-3 top-3 text-gray-400" />
-                <input
-                  type="text"
-                  placeholder="운송장번호, 수취인, 발송인 검색..."
-                  className="pl-10 pr-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                />
-              </div>
+              
+              {/* 모바일: 검색 및 필터 행 */}
+              <div className="flex flex-col sm:flex-row gap-3">
+                {/* 검색 */}
+                <div className="relative flex-1">
+                  <Search className="w-5 h-5 absolute left-3 top-3 text-gray-400" />
+                  <input
+                    type="text"
+                    placeholder="운송장번호, 수취인, 발송인 검색..."
+                    className="w-full pl-10 pr-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-base"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                  />
+                </div>
 
-              {/* 상태 필터 */}
-              <div className="relative">
-                <Filter className="w-5 h-5 absolute left-3 top-3 text-gray-400" />
-                <select
-                  className="pl-10 pr-8 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent appearance-none bg-white"
-                  value={statusFilter}
-                  onChange={(e) => setStatusFilter(e.target.value)}
-                >
-                  <option value="all">모든 상태</option>
-                  <option value="접수완료">접수완료</option>
-                  <option value="배송준비">배송준비</option>
-                  <option value="배송중">배송중</option>
-                  <option value="배송완료">배송완료</option>
-                  <option value="취소">취소</option>
-                  <option value="반송">반송</option>
-                </select>
+                {/* 상태 필터 */}
+                <div className="relative sm:w-48">
+                  <Filter className="w-5 h-5 absolute left-3 top-3 text-gray-400 pointer-events-none" />
+                  <select
+                    className="w-full pl-10 pr-8 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent appearance-none bg-white text-base"
+                    value={statusFilter}
+                    onChange={(e) => setStatusFilter(e.target.value)}
+                  >
+                    <option value="all">모든 상태</option>
+                    <option value="접수완료">접수완료</option>
+                    <option value="배송준비">배송준비</option>
+                    <option value="배송중">배송중</option>
+                    <option value="배송완료">배송완료</option>
+                    <option value="취소">취소</option>
+                    <option value="반송">반송</option>
+                  </select>
+                </div>
               </div>
             </div>
           </div>
         </div>
 
-        <div className="overflow-x-auto">
+        {/* 데스크톱: 테이블 뷰 */}
+        <div className="hidden lg:block overflow-x-auto">
           <table className="w-full">
             <thead className="bg-gray-50">
               <tr>
@@ -428,7 +477,7 @@ const Dashboard: React.FC = () => {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                       <button
-                        className="text-blue-600 hover:text-blue-900 flex items-center gap-1"
+                        className="text-blue-600 hover:text-blue-900 flex items-center gap-1 touch-manipulation"
                         onClick={() => handleOrderClick(order)}
                       >
                         <Eye className="w-4 h-4" />
@@ -441,7 +490,157 @@ const Dashboard: React.FC = () => {
             </tbody>
           </table>
         </div>
+
+        {/* 모바일/태블릿: 카드 뷰 */}
+        <div className="lg:hidden space-y-4">
+          {filteredOrders.length === 0 ? (
+            <div className="bg-white rounded-lg shadow p-8 text-center text-gray-500">
+              {searchTerm || statusFilter !== 'all' ? '검색 결과가 없습니다.' : '배송 주문이 없습니다.'}
+            </div>
+          ) : (
+            filteredOrders.map((order) => (
+              <div key={order.id} className="bg-white rounded-lg shadow hover:shadow-md transition-shadow">
+                <div className="p-4">
+                  {/* 카드 헤더 */}
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="flex items-center gap-2">
+                      <Truck className="w-5 h-5 text-blue-500" />
+                      <span className="font-medium text-gray-900">
+                        {order.tracking_number || `주문 #${order.id}`}
+                      </span>
+                    </div>
+                    {getStatusBadge(order.status)}
+                  </div>
+                  
+                  {/* 카드 내용 */}
+                  <div className="space-y-2 mb-4">
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-gray-500">발송인</span>
+                      <span className="text-sm font-medium text-gray-900">{order.sender_name}</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-gray-500">수취인</span>
+                      <span className="text-sm font-medium text-gray-900">{order.receiver_name}</span>
+                    </div>
+                    {(order.package_description || order.package_type) && (
+                      <div className="flex justify-between items-center">
+                        <span className="text-sm text-gray-500">상품</span>
+                        <span className="text-sm font-medium text-gray-900 text-right">
+                          {order.package_description || order.package_type}
+                        </span>
+                      </div>
+                    )}
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-gray-500">접수일</span>
+                      <span className="text-sm font-medium text-gray-900">
+                        {new Date(order.created_at).toLocaleDateString('ko-KR')}
+                      </span>
+                    </div>
+                  </div>
+                  
+                  {/* 카드 액션 */}
+                  <div className="flex justify-end">
+                    <button
+                      className="flex items-center gap-2 px-4 py-2 bg-blue-500 text-white text-sm rounded-lg hover:bg-blue-600 transition-colors touch-manipulation"
+                      onClick={() => handleOrderClick(order)}
+                    >
+                      <Eye className="w-4 h-4" />
+                      상세보기
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
       </div>
+
+      {/* 데이터 내보내기 모달 */}
+      {showExportModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-lg shadow-xl max-w-md w-full">
+            <div className="p-6">
+              <h3 className="text-lg font-semibold text-gray-900 mb-4">데이터 내보내기</h3>
+              
+              {/* 날짜 범위 설정 */}
+              <div className="space-y-4 mb-6">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">시작 날짜</label>
+                  <input
+                    type="date"
+                    value={startDate}
+                    onChange={(e) => setStartDate(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">종료 날짜</label>
+                  <input
+                    type="date"
+                    value={endDate}
+                    onChange={(e) => setEndDate(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+              </div>
+
+              {/* 내보내기 옵션 */}
+              <div className="space-y-3 mb-6">
+                <h4 className="text-sm font-medium text-gray-700">주문 데이터 내보내기</h4>
+                <div className="grid grid-cols-2 gap-3">
+                  <button
+                    onClick={() => handleExport('xlsx', 'orders')}
+                    className="flex items-center justify-center gap-2 px-4 py-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                  >
+                    <FileSpreadsheet className="w-5 h-5 text-green-600" />
+                    <span className="text-sm">Excel 파일</span>
+                  </button>
+                  <button
+                    onClick={() => handleExport('csv', 'orders')}
+                    className="flex items-center justify-center gap-2 px-4 py-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                  >
+                    <FileText className="w-5 h-5 text-blue-600" />
+                    <span className="text-sm">CSV 파일</span>
+                  </button>
+                </div>
+                
+                {/* 매니저/관리자만 통계 리포트 내보내기 가능 */}
+                {(user?.role === 'admin' || user?.role === 'manager') && (
+                  <>
+                    <h4 className="text-sm font-medium text-gray-700 mt-4">통계 리포트 내보내기</h4>
+                    <div className="grid grid-cols-2 gap-3">
+                      <button
+                        onClick={() => handleExport('xlsx', 'statistics')}
+                        className="flex items-center justify-center gap-2 px-4 py-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                      >
+                        <FileSpreadsheet className="w-5 h-5 text-green-600" />
+                        <span className="text-sm">Excel 리포트</span>
+                      </button>
+                      <button
+                        onClick={() => handleExport('csv', 'statistics')}
+                        className="flex items-center justify-center gap-2 px-4 py-3 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                      >
+                        <FileText className="w-5 h-5 text-blue-600" />
+                        <span className="text-sm">CSV 리포트</span>
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
+
+              {/* 버튼 */}
+              <div className="flex justify-end gap-3">
+                <button
+                  onClick={() => setShowExportModal(false)}
+                  className="px-4 py-2 text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+                >
+                  취소
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* 주문 상세 모달 */}
       <OrderDetailModal

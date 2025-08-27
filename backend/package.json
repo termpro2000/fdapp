@@ -20,7 +20,9 @@
     "express": "^4.21.2",
     "express-rate-limit": "^8.0.1",
     "express-session": "^1.18.2",
-    "mysql2": "^3.14.3"
+    "json2csv": "^6.0.0-alpha.2",
+    "mysql2": "^3.14.3",
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.1.12",

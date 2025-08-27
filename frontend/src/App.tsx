@@ -1,15 +1,27 @@
 import React, { useState, useEffect } from 'react';
 import { LogOut, Package, BarChart3, Plus, Users, Search } from 'lucide-react';
 import { AuthContext, useAuthProvider, useAuth } from './hooks/useAuth';
+import { useNotification } from './hooks/useNotification';
 import AuthPage from './components/auth/AuthPage';
 import ShippingOrderForm from './components/shipping/ShippingOrderForm';
 import Dashboard from './components/dashboard/Dashboard';
 import UserManagement from './components/admin/UserManagement';
 import TrackingPage from './components/tracking/TrackingPage';
+import ToastContainer from './components/notifications/ToastContainer';
+import NotificationPermission from './components/notifications/NotificationPermission';
 
 const AppContent: React.FC = () => {
   const { user, isLoading, isAuthenticated, logout } = useAuth();
+  const {
+    permission,
+    toasts,
+    requestPermission,
+    removeToast,
+    notifyOrderStatusChange,
+    notifyNewOrder
+  } = useNotification();
   const [currentPage, setCurrentPage] = useState<'dashboard' | 'new-order' | 'users' | 'tracking'>('dashboard');
+  const [showPermissionRequest, setShowPermissionRequest] = useState(false);
 
   // URL에서 tracking 모드 확인
   useEffect(() => {
@@ -20,6 +32,17 @@ const AppContent: React.FC = () => {
       setCurrentPage('tracking');
     }
   }, []);
+
+  // 로그인 후 알림 권한 요청 (관리자/매니저만)
+  useEffect(() => {
+    if (isAuthenticated && (user?.role === 'admin' || user?.role === 'manager') && permission === 'default') {
+      const timer = setTimeout(() => {
+        setShowPermissionRequest(true);
+      }, 2000); // 2초 후 권한 요청 표시
+      
+      return () => clearTimeout(timer);
+    }
+  }, [isAuthenticated, user?.role, permission]);
 
   if (isLoading) {
     return (
@@ -64,61 +87,79 @@ const AppContent: React.FC = () => {
             </div>
             
             {/* 네비게이션 메뉴 */}
-            <nav className="flex items-center gap-2">
+            <nav className="flex items-center gap-1 sm:gap-2">
               <button
                 onClick={() => setCurrentPage('dashboard')}
-                className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
+                className={`flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg transition-colors touch-manipulation ${
                   currentPage === 'dashboard'
                     ? 'bg-blue-100 text-blue-700'
                     : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
                 }`}
               >
                 <BarChart3 className="w-5 h-5" />
-                <span className="hidden sm:inline">대시보드</span>
+                <span className="hidden md:inline">대시보드</span>
               </button>
               
               <button
                 onClick={() => setCurrentPage('new-order')}
-                className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
+                className={`flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg transition-colors touch-manipulation ${
                   currentPage === 'new-order'
                     ? 'bg-blue-100 text-blue-700'
                     : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
                 }`}
               >
                 <Plus className="w-5 h-5" />
-                <span className="hidden sm:inline">새 배송접수</span>
+                <span className="hidden md:inline">새 배송접수</span>
               </button>
 
               <button
                 onClick={() => setCurrentPage('tracking')}
-                className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
+                className={`flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg transition-colors touch-manipulation ${
                   currentPage === 'tracking'
                     ? 'bg-blue-100 text-blue-700'
                     : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
                 }`}
               >
                 <Search className="w-5 h-5" />
-                <span className="hidden sm:inline">배송 추적</span>
+                <span className="hidden md:inline">배송 추적</span>
               </button>
+              
+              {/* 테스트용 알림 버튼 (개발 중) */}
+              {(user?.role === 'admin' || user?.role === 'manager') && (
+                <button
+                  onClick={() => {
+                    notifyOrderStatusChange({
+                      orderId: 123,
+                      status: '배송완료',
+                      customerName: '테스트 고객',
+                      trackingNumber: '1234567890'
+                    });
+                  }}
+                  className="px-3 py-2 bg-green-500 text-white rounded-lg hover:bg-green-600 text-sm"
+                  title="알림 테스트"
+                >
+                  🔔
+                </button>
+              )}
               
               {/* 관리자/매니저만 사용자 관리 메뉴 표시 */}
               {(user?.role === 'admin' || user?.role === 'manager') && (
                 <button
                   onClick={() => setCurrentPage('users')}
-                  className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
+                  className={`flex items-center gap-2 px-3 sm:px-4 py-2 rounded-lg transition-colors touch-manipulation ${
                     currentPage === 'users'
                       ? 'bg-blue-100 text-blue-700'
                       : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
                   }`}
                 >
                   <Users className="w-5 h-5" />
-                  <span className="hidden sm:inline">사용자 관리</span>
+                  <span className="hidden md:inline">사용자 관리</span>
                 </button>
               )}
             </nav>
             
-            <div className="flex items-center gap-4">
-              <div className="text-right">
+            <div className="flex items-center gap-2 sm:gap-4">
+              <div className="text-right hidden sm:block">
                 <div className="flex items-center gap-2">
                   <div>
                     <p className="text-sm font-medium text-gray-900">{user?.name}님</p>
@@ -138,9 +179,24 @@ const AppContent: React.FC = () => {
                 </div>
               </div>
               
+              {/* 모바일에서는 역할 배지만 표시 */}
+              <div className="sm:hidden">
+                {user?.role && (
+                  <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                    user.role === 'admin' 
+                      ? 'bg-red-100 text-red-800' 
+                      : user.role === 'manager'
+                      ? 'bg-blue-100 text-blue-800'
+                      : 'bg-gray-100 text-gray-800'
+                  }`}>
+                    {user.role === 'admin' ? '관리자' : user.role === 'manager' ? '매니저' : '사용자'}
+                  </span>
+                )}
+              </div>
+              
               <button
                 onClick={handleLogout}
-                className="flex items-center gap-2 px-4 py-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors"
+                className="flex items-center gap-2 px-3 sm:px-4 py-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-lg transition-colors touch-manipulation"
                 title="로그아웃"
               >
                 <LogOut className="w-5 h-5" />
@@ -155,7 +211,10 @@ const AppContent: React.FC = () => {
       <main className="py-8">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           {currentPage === 'dashboard' ? (
-            <Dashboard key={Date.now()} />
+            <Dashboard 
+              key={Date.now()} 
+              onOrderStatusChange={notifyOrderStatusChange}
+            />
           ) : currentPage === 'users' ? (
             <UserManagement />
           ) : currentPage === 'tracking' ? (
@@ -170,7 +229,10 @@ const AppContent: React.FC = () => {
                 </p>
               </div>
               
-              <ShippingOrderForm onSuccess={() => setCurrentPage('dashboard')} />
+              <ShippingOrderForm 
+                onSuccess={() => setCurrentPage('dashboard')}
+                onNewOrder={notifyNewOrder}
+              />
             </>
           )}
         </div>
@@ -185,6 +247,18 @@ const AppContent: React.FC = () => {
           </div>
         </div>
       </footer>
+      
+      {/* 알림 시스템 */}
+      <ToastContainer toasts={toasts} onRemoveToast={removeToast} />
+      
+      {/* 알림 권한 요청 */}
+      {showPermissionRequest && (
+        <NotificationPermission
+          permission={permission}
+          onRequestPermission={requestPermission}
+          onDismiss={() => setShowPermissionRequest(false)}
+        />
+      )}
     </div>
   );
 };

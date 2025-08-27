@@ -20,9 +20,15 @@ const DELIVERY_TYPES = ['일반', '당일', '익일', '지정일'];
 
 interface ShippingOrderFormProps {
   onSuccess?: () => void;
+  onNewOrder?: (orderInfo: {
+    orderId: number;
+    customerName: string;
+    productName?: string;
+    amount?: number;
+  }) => void;
 }
 
-const ShippingOrderForm: React.FC<ShippingOrderFormProps> = ({ onSuccess }) => {
+const ShippingOrderForm: React.FC<ShippingOrderFormProps> = ({ onSuccess, onNewOrder }) => {
   const [currentStep, setCurrentStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitResult, setSubmitResult] = useState<{ success: boolean; message: string; trackingNumber?: string } | null>(null);
@@ -81,6 +87,16 @@ const ShippingOrderForm: React.FC<ShippingOrderFormProps> = ({ onSuccess }) => {
         trackingNumber: response.trackingNumber
       });
       
+      // 새 주문 알림 발송 (관리자/매니저용)
+      if (onNewOrder && response.orderId) {
+        onNewOrder({
+          orderId: response.orderId,
+          customerName: data.receiver_name,
+          productName: data.package_description,
+          amount: data.package_value
+        });
+      }
+      
       // 성공 시 대시보드로 이동
       if (onSuccess) {
         setTimeout(() => {
@@ -110,8 +126,9 @@ const ShippingOrderForm: React.FC<ShippingOrderFormProps> = ({ onSuccess }) => {
             <input
               type="text"
               {...register('sender_name', { required: '발송인 이름은 필수입니다' })}
-              className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              className="w-full pl-10 pr-4 py-3 text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               placeholder="이름을 입력하세요"
+              autoComplete="name"
             />
           </div>
           {errors.sender_name && <p className="mt-1 text-sm text-red-600">{errors.sender_name.message}</p>}
@@ -126,8 +143,9 @@ const ShippingOrderForm: React.FC<ShippingOrderFormProps> = ({ onSuccess }) => {
             <input
               type="tel"
               {...register('sender_phone', { required: '전화번호는 필수입니다' })}
-              className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              placeholder="전화번호를 입력하세요"
+              className="w-full pl-10 pr-4 py-3 text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              placeholder="010-1234-5678"
+              autoComplete="tel"
             />
           </div>
           {errors.sender_phone && <p className="mt-1 text-sm text-red-600">{errors.sender_phone.message}</p>}
@@ -140,8 +158,9 @@ const ShippingOrderForm: React.FC<ShippingOrderFormProps> = ({ onSuccess }) => {
             <input
               type="email"
               {...register('sender_email')}
-              className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              placeholder="이메일을 입력하세요"
+              className="w-full pl-10 pr-4 py-3 text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              placeholder="example@email.com"
+              autoComplete="email"
             />
           </div>
         </div>
@@ -153,8 +172,9 @@ const ShippingOrderForm: React.FC<ShippingOrderFormProps> = ({ onSuccess }) => {
             <input
               type="text"
               {...register('sender_company')}
-              className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              className="w-full pl-10 pr-4 py-3 text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               placeholder="회사명을 입력하세요"
+              autoComplete="organization"
             />
           </div>
         </div>
@@ -170,8 +190,9 @@ const ShippingOrderForm: React.FC<ShippingOrderFormProps> = ({ onSuccess }) => {
             <input
               type="text"
               {...register('sender_address', { required: '주소는 필수입니다' })}
-              className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              className="w-full pl-10 pr-4 py-3 text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
               placeholder="주소를 입력하세요"
+              autoComplete="street-address"
             />
           </div>
           {errors.sender_address && <p className="mt-1 text-sm text-red-600">{errors.sender_address.message}</p>}
@@ -184,8 +205,10 @@ const ShippingOrderForm: React.FC<ShippingOrderFormProps> = ({ onSuccess }) => {
           <input
             type="text"
             {...register('sender_zipcode', { required: '우편번호는 필수입니다' })}
-            className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            placeholder="우편번호"
+            className="w-full px-4 py-3 text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            placeholder="12345"
+            autoComplete="postal-code"
+            inputMode="numeric"
           />
           {errors.sender_zipcode && <p className="mt-1 text-sm text-red-600">{errors.sender_zipcode.message}</p>}
         </div>
@@ -196,8 +219,9 @@ const ShippingOrderForm: React.FC<ShippingOrderFormProps> = ({ onSuccess }) => {
         <input
           type="text"
           {...register('sender_detail_address')}
-          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-          placeholder="상세주소를 입력하세요"
+          className="w-full px-4 py-3 text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          placeholder="아파트명, 동/호수 등 상세주소"
+          autoComplete="street-address-line2"
         />
       </div>
     </div>
@@ -586,7 +610,7 @@ const ShippingOrderForm: React.FC<ShippingOrderFormProps> = ({ onSuccess }) => {
           <button
             onClick={handleSubmit(onSubmit)}
             disabled={isSubmitting}
-            className="w-full mt-6 bg-blue-500 hover:bg-blue-600 disabled:bg-blue-300 text-white font-medium py-3 rounded-lg transition-colors"
+            className="w-full mt-6 bg-blue-500 hover:bg-blue-600 disabled:bg-blue-300 text-white font-medium py-4 text-lg rounded-lg transition-colors touch-manipulation"
           >
             {isSubmitting ? '접수 처리 중...' : '배송접수 완료'}
           </button>
@@ -647,22 +671,22 @@ const ShippingOrderForm: React.FC<ShippingOrderFormProps> = ({ onSuccess }) => {
 
       {/* 네비게이션 버튼 */}
       {!submitResult && (
-        <div className="flex justify-between">
+        <div className="flex justify-between gap-4">
           <button
             onClick={prevStep}
             disabled={currentStep === 1}
-            className="flex items-center gap-2 px-6 py-3 bg-gray-500 hover:bg-gray-600 disabled:bg-gray-300 text-white font-medium rounded-lg transition-colors"
+            className="flex items-center gap-2 px-6 py-4 bg-gray-500 hover:bg-gray-600 disabled:bg-gray-300 text-white font-medium rounded-lg transition-colors touch-manipulation"
           >
             <ChevronLeft className="w-5 h-5" />
-            이전
+            <span className="hidden sm:inline">이전</span>
           </button>
           
           {currentStep < 4 ? (
             <button
               onClick={nextStep}
-              className="flex items-center gap-2 px-6 py-3 bg-blue-500 hover:bg-blue-600 text-white font-medium rounded-lg transition-colors"
+              className="flex items-center gap-2 px-6 py-4 bg-blue-500 hover:bg-blue-600 text-white font-medium rounded-lg transition-colors touch-manipulation"
             >
-              다음
+              <span className="hidden sm:inline">다음</span>
               <ChevronRight className="w-5 h-5" />
             </button>
           ) : null}
