@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const authController = require('../controllers/authController');
+const { authenticateToken } = require('../middleware/auth');
 
 // 회원가입
 router.post('/register', authController.register);
@@ -16,5 +17,14 @@ router.post('/logout', authController.logout);
 
 // 현재 사용자 정보
 router.get('/me', authController.me);
+
+// JWT 토큰 검증 테스트 엔드포인트
+router.get('/test-jwt', authenticateToken, (req, res) => {
+  res.json({
+    message: 'JWT 인증 성공!',
+    user: req.user,
+    timestamp: new Date().toISOString()
+  });
+});
 
 module.exports = router;
