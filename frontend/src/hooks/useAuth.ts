@@ -26,11 +26,17 @@ export const useAuthProvider = (): AuthContextType => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // 초기 로드 시 세션 확인
+  /**
+   * 컴포넌트 마운트 시 기존 세션 유지 여부 확인
+   * 브라우저 새로고침 시에도 로그인 상태 유지
+   */
   useEffect(() => {
     checkSession();
   }, []);
 
+  /**
+   * 서버에서 현재 세션 상태를 확인하고 사용자 정보를 가져오는 함수
+   */
   const checkSession = async () => {
     try {
       setIsLoading(true);
@@ -45,6 +51,11 @@ export const useAuthProvider = (): AuthContextType => {
     }
   };
 
+  /**
+   * 사용자 로그인 처리 함수
+   * @param data - 로그인 정보 (사용자명, 비밀번호)
+   * @throws {Error} 로그인 실패 시 에러 발생
+   */
   const login = async (data: LoginData) => {
     try {
       const response = await authAPI.login(data);
@@ -57,6 +68,12 @@ export const useAuthProvider = (): AuthContextType => {
     }
   };
 
+  /**
+   * 사용자 회원가입 처리 함수
+   * 회원가입 성공 후 자동으로 로그인 처리
+   * @param data - 회원가입 정보
+   * @throws {Error} 회원가입 실패 시 에러 발생
+   */
   const register = async (data: RegisterData) => {
     try {
       await authAPI.register(data);
@@ -71,6 +88,10 @@ export const useAuthProvider = (): AuthContextType => {
     }
   };
 
+  /**
+   * 사용자 로그아웃 처리 함수
+   * 서버 오류가 있어도 클라이언트에서는 로그아웃 상태로 처리
+   */
   const logout = async () => {
     try {
       await authAPI.logout();
@@ -82,6 +103,12 @@ export const useAuthProvider = (): AuthContextType => {
     }
   };
 
+  /**
+   * 아이디 중복 여부를 확인하는 함수
+   * @param username - 확인할 사용자 아이디
+   * @returns {Promise<{available: boolean, message: string}>} 사용 가능 여부와 메시지
+   * @throws {Error} 아이디 확인 실패 시 에러 발생
+   */
   const checkUsername = async (username: string) => {
     try {
       return await authAPI.checkUsername(username);

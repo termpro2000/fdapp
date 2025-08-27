@@ -5,6 +5,9 @@ import { api, shippingAPI } from '../../services/api';
 import type { ShippingOrder } from '../../types';
 import OrderDetailModal from './OrderDetailModal';
 
+/**
+ * 대시보드 통계 데이터 인터페이스
+ */
 interface DashboardStats {
   total: number;
   접수완료: number;
@@ -15,7 +18,11 @@ interface DashboardStats {
   반송: number;
 }
 
+/**
+ * 대시보드 컴포넌트 props 인터페이스
+ */
 interface DashboardProps {
+  /** 주문 상태 변경 시 호출되는 콜백 함수 */
   onOrderStatusChange?: (orderInfo: {
     orderId: number;
     status: string;
@@ -24,6 +31,13 @@ interface DashboardProps {
   }) => void;
 }
 
+/**
+ * 배송 관리 대시보드 컴포넌트
+ * 주문 목록 조회, 통계 표시, 실시간 업데이트, 데이터 내보내기 기능 제공
+ * 
+ * @param props - 컴포넌트 props
+ * @returns 대시보드 JSX 엘리먼트
+ */
 const Dashboard: React.FC<DashboardProps> = ({ onOrderStatusChange }) => {
   const { user } = useAuth();
   const [orders, setOrders] = useState<ShippingOrder[]>([]);
@@ -50,7 +64,10 @@ const Dashboard: React.FC<DashboardProps> = ({ onOrderStatusChange }) => {
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const visibilityRef = useRef<boolean>(true);
 
-  // 페이지 가시성 감지
+  /**
+   * 페이지 가시성 변화를 감지하여 비활성 상태에서 자동 새로고침을 중지하고,
+   * 다시 활성화될 때 즉시 데이터를 업데이트
+   */
   useEffect(() => {
     const handleVisibilityChange = () => {
       visibilityRef.current = !document.hidden;
@@ -65,7 +82,10 @@ const Dashboard: React.FC<DashboardProps> = ({ onOrderStatusChange }) => {
     return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
   }, [isAutoRefreshEnabled]);
 
-  // 자동 새로고침 설정
+  /**
+   * 자동 새로고침 기능 설정 - 10초마다 데이터 업데이트
+   * 페이지가 보이는 상태에서만 실행
+   */
   useEffect(() => {
     if (isAutoRefreshEnabled) {
       intervalRef.current = setInterval(() => {
@@ -88,11 +108,17 @@ const Dashboard: React.FC<DashboardProps> = ({ onOrderStatusChange }) => {
     };
   }, [isAutoRefreshEnabled]);
 
-  // 컴포넌트 마운트 시 초기 데이터 로드
+  /**
+   * 컴포넌트 마운트 시 초기 데이터 로드
+   */
   useEffect(() => {
     fetchOrders();
   }, []);
 
+  /**
+   * 서버에서 주문 데이터를 가져와서 로컬 상태와 통계를 업데이트
+   * @param showRefreshIndicator - 새로고침 인디케이터 표시 여부
+   */
   const fetchOrders = async (showRefreshIndicator = false) => {
     try {
       if (showRefreshIndicator) {
@@ -126,6 +152,11 @@ const Dashboard: React.FC<DashboardProps> = ({ onOrderStatusChange }) => {
     }
   };
 
+  /**
+   * 주문 상태에 따른 배지 스타일과 아이콘을 반환
+   * @param status - 주문 상태 (접수완료, 배솨준비, 배송중, 배송완료, 취소, 반송)
+   * @returns JSX 요소
+   */
   const getStatusBadge = (status: string) => {
     const statusConfig = {
       '접수완료': { color: 'bg-yellow-100 text-yellow-800', text: '접수완료', icon: Clock },
@@ -211,7 +242,11 @@ const Dashboard: React.FC<DashboardProps> = ({ onOrderStatusChange }) => {
     }
   };
 
-  // 데이터 내보내기 함수
+  /**
+   * 데이터를 지정된 형식으로 내보내기
+   * @param format - 내보내기 형식 (xlsx 또는 csv)
+   * @param type - 내보내기 데이터 유형 (orders: 주문 데이터, statistics: 통계 데이터)
+   */
   const handleExport = async (format: 'xlsx' | 'csv', type: 'orders' | 'statistics') => {
     try {
       const params = new URLSearchParams();

@@ -1,6 +1,20 @@
 const { pool, generateTrackingNumber } = require('../config/database');
 
-// 배송 접수 생성
+/**
+ * 새로운 배송 접수를 생성하는 함수
+ * @param {Object} req - Express 요청 객체
+ * @param {Object} req.session - Express 세션 객체
+ * @param {Object} req.session.user - 로그인된 사용자 정보
+ * @param {Object} req.body - 배송 접수 데이터 (26개 필드)
+ * @param {string} req.body.sender_name - 발송인 이름
+ * @param {string} req.body.sender_phone - 발송인 전화번호
+ * @param {string} req.body.sender_address - 발송인 주소
+ * @param {string} req.body.receiver_name - 수취인 이름
+ * @param {string} req.body.receiver_phone - 수취인 전화번호
+ * @param {string} req.body.receiver_address - 수취인 주소
+ * @param {Object} res - Express 응답 객체
+ * @returns {Promise<void>} JSON 응답 (생성된 주문 정보)
+ */
 async function createShippingOrder(req, res) {
   try {
     if (!req.session.user) {
@@ -98,7 +112,16 @@ async function createShippingOrder(req, res) {
   }
 }
 
-// 사용자별 배송 접수 목록 조회
+/**
+ * 사용자별 배송 접수 목록을 페이지네이션으로 조회하는 함수
+ * @param {Object} req - Express 요청 객체
+ * @param {Object} req.query - 쿼리 파라미터
+ * @param {number} [req.query.page=1] - 페이지 번호
+ * @param {number} [req.query.limit=10] - 페이지당 항목 수
+ * @param {Object} req.session - Express 세션 객체
+ * @param {Object} res - Express 응답 객체
+ * @returns {Promise<void>} JSON 응답 (주문 목록과 페이지네이션 정보)
+ */
 async function getShippingOrders(req, res) {
   try {
     if (!req.session.user) {
@@ -151,7 +174,15 @@ async function getShippingOrders(req, res) {
   }
 }
 
-// 특정 배송 접수 상세 조회
+/**
+ * 특정 배송 접수의 상세 정보를 조회하는 함수
+ * @param {Object} req - Express 요청 객체
+ * @param {Object} req.params - URL 파라미터
+ * @param {string} req.params.id - 배송 접수 ID
+ * @param {Object} req.session - Express 세션 객체
+ * @param {Object} res - Express 응답 객체
+ * @returns {Promise<void>} JSON 응답 (배송 접수 상세 정보)
+ */
 async function getShippingOrder(req, res) {
   try {
     if (!req.session.user) {
@@ -222,7 +253,17 @@ async function trackShipment(req, res) {
   }
 }
 
-// 배송 접수 상태 업데이트
+/**
+ * 배송 접수의 상태를 업데이트하는 함수
+ * @param {Object} req - Express 요청 객체
+ * @param {Object} req.params - URL 파라미터
+ * @param {string} req.params.id - 배송 접수 ID
+ * @param {Object} req.body - 요청 본문
+ * @param {string} req.body.status - 새로운 상태값 (접수완료, 배송준비, 배송중, 배송완료, 취소, 반송)
+ * @param {Object} req.session - Express 세션 객체
+ * @param {Object} res - Express 응답 객체
+ * @returns {Promise<void>} JSON 응답 (업데이트된 주문 정보)
+ */
 async function updateShippingOrderStatus(req, res) {
   try {
     if (!req.session.user) {
@@ -385,7 +426,19 @@ async function trackShipment(req, res) {
   }
 }
 
-// 관리자용 운송장 번호 할당
+/**
+ * 관리자가 배송 접수에 운송장 번호를 할당하는 함수
+ * @param {Object} req - Express 요청 객체
+ * @param {Object} req.params - URL 파라미터
+ * @param {string} req.params.id - 배송 접수 ID
+ * @param {Object} req.body - 요청 본문
+ * @param {string} req.body.tracking_number - 운송장 번호
+ * @param {string} [req.body.tracking_company] - 운송회사
+ * @param {string} [req.body.estimated_delivery] - 예상 배송일
+ * @param {Object} req.session - Express 세션 객체
+ * @param {Object} res - Express 응답 객체
+ * @returns {Promise<void>} JSON 응답 (할당 완료 메시지)
+ */
 async function assignTrackingNumber(req, res) {
   try {
     const { id } = req.params;

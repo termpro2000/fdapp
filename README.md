@@ -104,18 +104,25 @@ npm run preview    # 빌드 미리보기
 1. 회원가입으로 새 계정 생성
 2. 로그인 후 배송접수 테스트
 
-## 📚 API 문서
+## 📚 문서
 
-### 인증 API
+### API 문서
+- **[API_DOCUMENTATION.md](./API_DOCUMENTATION.md)** - 전체 API 엔드포인트 상세 문서
+  - 인증 API (회원가입, 로그인, 로그아웃)
+  - 배송 API (접수, 조회, 추적, 상태 업데이트)
+  - 요청/응답 스키마 및 예제
+
+### 코드 문서화
+- **[CODE_DOCUMENTATION_GUIDELINES.md](./CODE_DOCUMENTATION_GUIDELINES.md)** - 코드 문서화 가이드라인
+  - JSDoc/TSDoc 작성 규칙
+  - 주석 작성 모범사례
+  - 용어 통일 및 스타일 가이드
+
+### 주요 API 엔드포인트 (요약)
 - `POST /api/auth/register` - 회원가입
 - `POST /api/auth/login` - 로그인
-- `POST /api/auth/logout` - 로그아웃
-- `GET /api/auth/me` - 현재 사용자 정보
-
-### 배송 API  
 - `POST /api/shipping/orders` - 배송접수 생성
 - `GET /api/shipping/orders` - 배송접수 목록
-- `GET /api/shipping/orders/:id` - 배송접수 상세
 - `GET /api/shipping/tracking/:number` - 운송장 추적
 
 ## 🎯 다음 단계

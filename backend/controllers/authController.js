@@ -1,7 +1,18 @@
 const { pool } = require('../config/database');
 const bcrypt = require('bcryptjs');
 
-// 회원가입
+/**
+ * 새 사용자를 등록하는 함수
+ * @param {Object} req - Express 요청 객체
+ * @param {Object} req.body - 요청 본문
+ * @param {string} req.body.username - 사용자 아이디
+ * @param {string} req.body.password - 비밀번호
+ * @param {string} req.body.name - 사용자 실명
+ * @param {string} [req.body.phone] - 전화번호 (선택사항)
+ * @param {string} [req.body.company] - 회사명 (선택사항)
+ * @param {Object} res - Express 응답 객체
+ * @returns {Promise<void>} JSON 응답 (성공 시 201, 오류 시 400/409/500)
+ */
 async function register(req, res) {
   try {
     const { username, password, name, phone, company } = req.body;
@@ -50,7 +61,14 @@ async function register(req, res) {
   }
 }
 
-// 아이디 중복 확인
+/**
+ * 사용자 아이디 중복 여부를 확인하는 함수
+ * @param {Object} req - Express 요청 객체
+ * @param {Object} req.params - URL 파라미터
+ * @param {string} req.params.username - 확인할 사용자 아이디
+ * @param {Object} res - Express 응답 객체
+ * @returns {Promise<void>} JSON 응답 (available: boolean, message: string)
+ */
 async function checkUsername(req, res) {
   try {
     const { username } = req.params;
@@ -74,7 +92,16 @@ async function checkUsername(req, res) {
   }
 }
 
-// 로그인
+/**
+ * 사용자 로그인을 처리하는 함수
+ * @param {Object} req - Express 요청 객체
+ * @param {Object} req.body - 요청 본문
+ * @param {string} req.body.username - 사용자 아이디
+ * @param {string} req.body.password - 비밀번호
+ * @param {Object} req.session - Express 세션 객체
+ * @param {Object} res - Express 응답 객체
+ * @returns {Promise<void>} JSON 응답 (성공 시 사용자 정보, 실패 시 오류 메시지)
+ */
 async function login(req, res) {
   try {
     const { username, password } = req.body;
@@ -149,7 +176,13 @@ async function login(req, res) {
   }
 }
 
-// 로그아웃
+/**
+ * 사용자 로그아웃을 처리하는 함수
+ * @param {Object} req - Express 요청 객체
+ * @param {Object} req.session - Express 세션 객체
+ * @param {Object} res - Express 응답 객체
+ * @returns {Promise<void>} JSON 응답 (로그아웃 완료 메시지)
+ */
 async function logout(req, res) {
   try {
     req.session.destroy((err) => {
@@ -172,7 +205,14 @@ async function logout(req, res) {
   }
 }
 
-// 현재 사용자 정보
+/**
+ * 현재 로그인된 사용자의 정보를 조회하는 함수
+ * @param {Object} req - Express 요청 객체
+ * @param {Object} req.session - Express 세션 객체
+ * @param {Object} req.session.user - 세션에 저장된 사용자 정보
+ * @param {Object} res - Express 응답 객체
+ * @returns {Promise<void>} JSON 응답 (사용자 정보 또는 인증 오류)
+ */
 async function me(req, res) {
   try {
     if (!req.session.user) {

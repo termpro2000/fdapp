@@ -9,8 +9,15 @@ import type {
   Pagination 
 } from '../types';
 
+/**
+ * API 베이스 URL 설정 (환경변수에서 가져오거나 기본값 사용)
+ */
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000/api';
 
+/**
+ * Axios 클라이언트 인스턴스 생성
+ * 세션 기반 인증을 위한 쿠키 포함 및 기본 설정 적용
+ */
 const apiClient = axios.create({
   baseURL: API_BASE_URL,
   withCredentials: true, // 세션 쿠키 포함
@@ -20,7 +27,9 @@ const apiClient = axios.create({
   }
 });
 
-// 응답 인터셉터로 에러 처리
+/**
+ * 응답 인터셉터 설정 - 인증 오류 처리
+ */
 apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
@@ -32,7 +41,10 @@ apiClient.interceptors.response.use(
   }
 );
 
-// 인증 관련 API
+/**
+ * 인증 관련 API 함수들
+ * 회원가입, 로그인, 로그아웃, 사용자 정보 조회 기능 제공
+ */
 export const authAPI = {
   // 회원가입
   register: async (data: RegisterData) => {
@@ -71,7 +83,10 @@ export const authAPI = {
   }
 };
 
-// 배송 관련 API
+/**
+ * 배송 관련 API 함수들
+ * 배송 접수 생성, 조회, 수정, 운송장 추적 기능 제공
+ */
 export const shippingAPI = {
   // 배송접수 생성
   createOrder: async (data: ShippingOrderData) => {
@@ -117,7 +132,10 @@ export const shippingAPI = {
   }
 };
 
-// 사용자 관리 API
+/**
+ * 사용자 관리 API 함수들 (관리자/매니저 전용)
+ * 사용자 CRUD, 활동 로그 조회 기능 제공
+ */
 export const userAPI = {
   // 모든 사용자 조회 (관리자/매니저만)
   getAllUsers: async (page = 1, limit = 10, search = '', role = '') => {
@@ -182,7 +200,10 @@ export const userAPI = {
   }
 };
 
-// 헬스 체크
+/**
+ * 서버 상태 확인을 위한 헬스 체크 API
+ * @returns 서버 상태 정보
+ */
 export const healthCheck = async () => {
   const response = await apiClient.get('/', { 
     baseURL: import.meta.env.VITE_API_URL?.replace('/api', '') || 'http://localhost:3000'
@@ -190,6 +211,9 @@ export const healthCheck = async () => {
   return response.data;
 };
 
-// named export로 통일
+/**
+ * API 클라이언트 인스턴스 내보내기
+ * named export와 default export로 모두 사용 가능
+ */
 export const api = apiClient;
 export default apiClient;

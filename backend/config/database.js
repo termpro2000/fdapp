@@ -14,10 +14,17 @@ const dbConfig = {
   queueLimit: 0
 };
 
-// Connection pool 생성
+/**
+ * MySQL 커넥션 풀 생성
+ * 연결 수 제한과 대기열 관리를 통해 데이터베이스 연결 최적화
+ */
 const pool = mysql.createPool(dbConfig);
 
-// 연결 테스트 함수
+/**
+ * 데이터베이스 연결 상태를 테스트하는 함수
+ * 연결 풀에서 연결을 가져와서 정상 작동 여부를 확인
+ * @returns {Promise<boolean>} 연결 성공 여부
+ */
 async function testConnection() {
   try {
     const connection = await pool.getConnection();
@@ -30,7 +37,14 @@ async function testConnection() {
   }
 }
 
-// 데이터베이스 초기화 함수
+/**
+ * 데이터베이스 테이블과 기본 데이터를 초기화하는 함수
+ * - users 테이블: 사용자 정보 저장
+ * - shipping_orders 테이블: 26개 필드를 가진 배송 접수 데이터
+ * - user_activities 테이블: 사용자 활동 로그
+ * - 기본 관리자 계정 생성
+ * @returns {Promise<boolean>} 초기화 성공 여부
+ */
 async function initDatabase() {
   try {
     // users 테이블 생성
@@ -143,9 +157,16 @@ async function initDatabase() {
   }
 }
 
-// 운송장 번호 생성 함수
+/**
+ * 유니크한 운송장 번호를 생성하는 함수
+ * 형식: SH + YYYYMMDD + 6자리 랜덤 문자열
+ * 예시: SH20240101ABC123
+ * @returns {string} 생성된 운송장 번호
+ */
 function generateTrackingNumber() {
+  // 현재 날짜를 YYYYMMDD 형식으로 변환
   const date = new Date().toISOString().slice(0, 10).replace(/-/g, '');
+  // 6자리 랜덤 영숫자 조합 생성
   const random = Math.random().toString(36).substr(2, 6).toUpperCase();
   return `SH${date}${random}`;
 }
