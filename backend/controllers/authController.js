@@ -1,5 +1,6 @@
 const { pool } = require('../config/database');
 const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
 
 /**
  * 새 사용자를 등록하는 함수
@@ -152,8 +153,8 @@ async function login(req, res) {
       [user.id]
     );
 
-    // 세션에 사용자 정보 저장
-    req.session.user = {
+    // JWT 토큰 생성
+    const userPayload = {
       id: user.id,
       username: user.username,
       name: user.name,
@@ -162,9 +163,19 @@ async function login(req, res) {
       role: user.role
     };
 
+    const token = jwt.sign(
+      userPayload,
+      process.env.JWT_SECRET || 'your-jwt-secret-key',
+      { expiresIn: '24h' }
+    );
+
+    // 세션에도 저장 (기존 호환성 유지)
+    req.session.user = userPayload;
+
     res.json({
       message: '로그인 성공',
-      user: req.session.user
+      user: userPayload,
+      token: token
     });
 
   } catch (error) {
