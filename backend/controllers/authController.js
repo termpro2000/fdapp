@@ -163,9 +163,13 @@ async function login(req, res) {
       role: user.role
     };
 
+    // 일관된 JWT 시크릿 사용
+    const jwtSecret = 'shipping-webapp-jwt-secret-2024';
+    console.log('JWT 토큰 생성 - Using consistent secret');
+    
     const token = jwt.sign(
       userPayload,
-      process.env.JWT_SECRET || 'your-jwt-secret-key',
+      jwtSecret,
       { expiresIn: '24h' }
     );
 

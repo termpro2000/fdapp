@@ -18,9 +18,13 @@ function authenticateToken(req, res, next) {
     });
   }
 
-  jwt.verify(token, process.env.JWT_SECRET || 'your-jwt-secret-key', (err, user) => {
+  // 일관된 JWT 시크릿 사용 
+  const jwtSecret = 'shipping-webapp-jwt-secret-2024';
+  console.log('JWT 검증 - Using consistent secret');
+  
+  jwt.verify(token, jwtSecret, (err, user) => {
     if (err) {
-      console.error('JWT 토큰 검증 오류:', err);
+      console.error('JWT 토큰 검증 오류:', err.message);
       return res.status(403).json({
         error: 'Forbidden',
         message: '유효하지 않은 토큰입니다.'
@@ -56,9 +60,7 @@ function optionalAuth(req, res, next) {
 const requireRoleToken = (allowedRoles = []) => {
   return (req, res, next) => {
     // 먼저 JWT 인증 확인
-    authenticateToken(req, res, (err) => {
-      if (err) return;
-
+    authenticateToken(req, res, () => {
       if (!req.user) {
         return res.status(401).json({
           error: 'Unauthorized',
