@@ -17,7 +17,9 @@ const { pool, generateTrackingNumber } = require('../config/database');
  */
 async function createShippingOrder(req, res) {
   try {
-    if (!req.session.user) {
+    // JWT 또는 세션 기반 인증 지원
+    const user = req.user || req.session?.user;
+    if (!user) {
       return res.status(401).json({
         error: 'Unauthorized',
         message: '로그인이 필요합니다.'
@@ -80,7 +82,7 @@ async function createShippingOrder(req, res) {
         delivery_memo, special_instructions
       ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `, [
-      req.session.user.id, tracking_number,
+      user.id, tracking_number,
       
       sender_name, sender_phone, sender_email || null, sender_company || null,
       sender_address, sender_detail_address || null, sender_zipcode,
@@ -124,7 +126,9 @@ async function createShippingOrder(req, res) {
  */
 async function getShippingOrders(req, res) {
   try {
-    if (!req.session.user) {
+    // JWT 또는 세션 기반 인증 지원
+    const user = req.user || req.session?.user;
+    if (!user) {
       return res.status(401).json({
         error: 'Unauthorized',
         message: '로그인이 필요합니다.'
@@ -138,7 +142,7 @@ async function getShippingOrders(req, res) {
     // 총 개수 조회
     const [countResult] = await pool.execute(
       'SELECT COUNT(*) as total FROM shipping_orders WHERE user_id = ?',
-      [req.session.user.id]
+      [user.id]
     );
     const total = countResult[0].total;
 
@@ -153,7 +157,7 @@ async function getShippingOrders(req, res) {
       WHERE user_id = ?
       ORDER BY created_at DESC
       LIMIT ? OFFSET ?
-    `, [req.session.user.id, limit, offset]);
+    `, [user.id, limit, offset]);
 
     res.json({
       orders,
@@ -185,7 +189,9 @@ async function getShippingOrders(req, res) {
  */
 async function getShippingOrder(req, res) {
   try {
-    if (!req.session.user) {
+    // JWT 또는 세션 기반 인증 지원
+    const user = req.user || req.session?.user;
+    if (!user) {
       return res.status(401).json({
         error: 'Unauthorized',
         message: '로그인이 필요합니다.'
@@ -196,7 +202,7 @@ async function getShippingOrder(req, res) {
 
     const [orders] = await pool.execute(
       'SELECT * FROM shipping_orders WHERE id = ? AND user_id = ?',
-      [id, req.session.user.id]
+      [id, user.id]
     );
 
     if (orders.length === 0) {
@@ -266,7 +272,9 @@ async function trackShipment(req, res) {
  */
 async function updateShippingOrderStatus(req, res) {
   try {
-    if (!req.session.user) {
+    // JWT 또는 세션 기반 인증 지원
+    const user = req.user || req.session?.user;
+    if (!user) {
       return res.status(401).json({
         error: 'Unauthorized',
         message: '로그인이 필요합니다.'
@@ -487,7 +495,7 @@ async function assignTrackingNumber(req, res) {
 
     // 활동 로그 기록
     const { logUserActivity } = require('./userController');
-    await logUserActivity(req.session.user.id, 'assign_tracking', 'shipping_order', id, {
+    await logUserActivity(user.id, 'assign_tracking', 'shipping_order', id, {
       tracking_number,
       tracking_company,
       estimated_delivery
