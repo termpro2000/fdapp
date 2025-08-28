@@ -27,4 +27,14 @@ router.get('/test-jwt', authenticateToken, (req, res) => {
   });
 });
 
+// 헤더 디버깅 엔드포인트
+router.get('/debug-headers', (req, res) => {
+  res.json({
+    headers: req.headers,
+    cookies: req.cookies,
+    session: req.session ? 'exists' : 'none',
+    timestamp: new Date().toISOString()
+  });
+});
+
 module.exports = router;
